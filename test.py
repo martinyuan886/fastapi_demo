@@ -1,4 +1,10 @@
-from fastapi import FastAPI
+from typing import Optional
+from typing import List, Dict, Set, Tuple
+
+from enum import Enum
+
+
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -8,7 +14,7 @@ app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
+    return "Hi, this is auto api simulator"
 
 #下面函参中
 # -item_id为client在url中输入的
@@ -52,6 +58,64 @@ class Item_patch(BaseModel):
 @app.patch("/items/{item_id}")
 def update_item(item_id: int, item: Item_patch):
     return {"item_id": item_id, "item_name": item.name, "ok_or_not": item.is_ok}
+    #print("no return")
 
 
-#add for test auto-reload
+class Result(str, Enum):
+    success = "success"
+    failed = "failed"
+
+
+class Vendor(str, Enum):
+    h3c = "H3C"
+    zte = "ZTE"
+    hw = "HW"
+    other = "Other"
+
+class Device_type(str, Enum):
+    sw = "SW"
+    router = "Router"
+    firewall = "FW"
+    other = "Other"
+
+
+#目前class中字段不能少/或写错，但是可以有多余字段，不报错，但是内部应该是忽略了，因为返回时候不带多余的字段
+class Dev_info(BaseModel):
+    sn: str
+    dhcp_ip: str
+    vendor: Vendor
+    device_type: Device_type
+
+
+class Item_get_sn_result(BaseModel):
+    #result: str                             
+    result: Result
+    #failure_info: Optional[str] = "N/A"    #request的body中可不带该字段，不带默认是"N/A"
+    failure_info: str = "N/A"
+    #dev_info: Dict[str, str]
+    dev_info: Dev_info            #通过pydantic的嵌套实现嵌套字段的校验
+    
+
+
+sn_list = ["123", "456", "789"]       #simulate sn in db, if sn replied by agent isn't in this list, corresponding error info would be replied 
+
+#post can use below curl command to check
+#curl -X POST "http://auto.cmri.com:31070/api/v1/resources/net_devices/get_sn_result" -H  "accept: application/json" -H  "Content-Type: application/json" -d "{\"result\":\"success\",\"failure_info\":\"N/A\",\"dev_info\":{\"sn\":\"123456\",\"dhcp_ip\":\"192.168.33.200\",\"vendor\":\"H3C\",\"dev_type\":\"FW\"}}"
+@app.post("/api/v1/resources/net_devices/get_sn_result")
+def update_get_sn_result(item: Item_get_sn_result):
+    #return {"get_sn_result": item.result, "failure_info": item.failure_info, "dev_info": item.dev_info}
+    #print("no return")
+    get_sn_result = item.result
+    #senario: agent not got
+    if get_sn_result == "failed":
+        failure_info_get_sn = item.failure_info
+        print("agent failed to get sn, failure info is: {}".format(failure_info_get_sn))
+    elif get_sn_result == "success":
+        sn_get = item.dev_info.sn
+        if sn_get in sn_list:
+            return {"sn_match_result": "success", "dev_config_data":{"hostname": "NFV-SRV-1", "mng_ip": "10.10.10.1", "netmask": "24","gw": "10.10.10.254"}}
+        else:
+            print("sn got was not found in db, please further check")
+            #return {"sn_match_result": "failed", }
+            raise HTTPException(status_code=404, detail="sn got was not found in db")
+
