@@ -1,0 +1,9 @@
+1.结合"AUTO调用厂商agent获取sn并配置设备管理口地址流程图"流程图及模拟接口(http://47.95.4.161:31070/docs)了解流程及auto暴露的接口信息
+2.接口"http://192.168.33.195:8000/api/v1/resources/net_devices/get_sn_result":
+2.1 "agent成功获取sn"情况:  
+2.1.1 "如果AUTO在数据库中匹配到sn对应的设备(目前测试可用sn为"123", "456", "789")": AUTO response sn匹配成功结果及匹配到的设备配置信息
+2.1.2 "如果AUTO在数据库中没有匹配到sn对应的设备(类似可用"1234"等非上述可用sn模拟)": AUTO response sn匹配失败结果
+2.1.3 "内部错误"情况(auto response 500 internal server error):用于模拟AUTO发生内部错误场景，可在request body中使sn的值为字符串"internal_error"模拟
+2.2 "agent未成功获取sn"情况: AUTO reponse收到失败结果信息
+
+3.其他测试接口待后续更新
